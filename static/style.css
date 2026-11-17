@@ -1,0 +1,91 @@
+body {
+  font-family: monospace;
+  margin: 1rem;
+  max-width: 1100px;
+}
+
+label {
+  display: inline-block;
+  margin-right: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+input {
+  font: inherit;
+  width: 8rem;
+}
+
+#username {
+  width: 12rem;
+}
+
+button {
+  font: inherit;
+  margin-right: 0.25rem;
+}
+
+#games {
+  max-height: 240px;
+  overflow: auto;
+  border: 1px solid #000;
+  padding: 0.25rem;
+}
+
+.game-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin: 0.15rem 0;
+  cursor: pointer;
+}
+
+.game-item.active {
+  outline: 2px solid #000;
+}
+
+.row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+#board {
+  display: grid;
+  grid-template-columns: repeat(8, 2rem);
+  grid-template-rows: repeat(8, 2rem);
+  border: 1px solid #000;
+  width: max-content;
+}
+
+.sq {
+  width: 2rem;
+  height: 2rem;
+  line-height: 2rem;
+  text-align: center;
+  font-size: 1.4rem;
+}
+
+.sq.light {
+  background: #eee;
+}
+
+.sq.dark {
+  background: #bbb;
+}
+
+#moves-list {
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid #000;
+  padding: 0.5rem;
+  min-width: 280px;
+}
+
+.current-move {
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+#status {
+  margin-left: 0.5rem;
+}

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chess Analyzer</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <h1>Chess Analyzer</h1>
+
+  <section>
+    <label>
+      Chess.com username
+      <input id="username" type="text" autocomplete="username" />
+    </label>
+    <label>
+      Year
+      <input id="year" type="number" min="2000" max="2100" />
+    </label>
+    <label>
+      Month
+      <input id="month" type="number" min="1" max="12" />
+    </label>
+    <label>
+      Depth
+      <input id="depth" type="number" min="5" max="30" value="15" />
+    </label>
+    <button id="load-games" type="button">Load games</button>
+    <span id="status"></span>
+  </section>
+
+  <section>
+    <h2>Games</h2>
+    <div id="games"></div>
+  </section>
+
+  <section id="analysis-panel" hidden>
+    <h2>Analysis</h2>
+    <div id="game-meta"></div>
+    <div class="row">
+      <div>
+        <div id="board"></div>
+        <div>
+          <button id="prev" type="button">Prev</button>
+          <button id="next" type="button">Next</button>
+          <button id="start" type="button">Start</button>
+          <button id="end" type="button">End</button>
+        </div>
+      </div>
+      <div>
+        <pre id="eval-info"></pre>
+        <pre id="moves-list"></pre>
+      </div>
+    </div>
+  </section>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
