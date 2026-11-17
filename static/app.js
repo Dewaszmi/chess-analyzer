@@ -3,26 +3,37 @@ const PIECES = {
   k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟",
 };
 
+const PV_TOOLTIP =
+  "Principal Variation: Stockfish's predicted best continuation from this position (sequence of moves).";
+
 const state = {
+  view: "loader", // "loader" | "analysis"
   games: [],
   analysis: null,
-  ply: 0, // index into positions (0 = start)
+  ply: 0,
   selectedIndex: -1,
+  showBest: true,
 };
 
 const el = {
+  loaderView: document.getElementById("loader-view"),
+  analysisView: document.getElementById("analysis-view"),
   username: document.getElementById("username"),
   year: document.getElementById("year"),
   month: document.getElementById("month"),
   depth: document.getElementById("depth"),
   loadGames: document.getElementById("load-games"),
   status: document.getElementById("status"),
+  analysisStatus: document.getElementById("analysis-status"),
   games: document.getElementById("games"),
-  panel: document.getElementById("analysis-panel"),
+  back: document.getElementById("back"),
   meta: document.getElementById("game-meta"),
   board: document.getElementById("board"),
   evalInfo: document.getElementById("eval-info"),
-  movesList: document.getElementById("moves-list"),
+  whiteHeader: document.getElementById("white-header"),
+  blackHeader: document.getElementById("black-header"),
+  movesBody: document.getElementById("moves-body"),
+  showBest: document.getElementById("show-best"),
   prev: document.getElementById("prev"),
   next: document.getElementById("next"),
   start: document.getElementById("start"),
@@ -33,12 +44,35 @@ function setStatus(msg) {
   el.status.textContent = msg || "";
 }
 
+function setAnalysisStatus(msg) {
+  el.analysisStatus.textContent = msg || "";
+}
+
+function showLoaderView() {
+  state.view = "loader";
+  el.loaderView.hidden = false;
+  el.analysisView.hidden = true;
+}
+
+function showAnalysisView() {
+  state.view = "analysis";
+  el.loaderView.hidden = true;
+  el.analysisView.hidden = false;
+}
+
+function goBack() {
+  showLoaderView();
+  setAnalysisStatus("");
+}
+
 function loadPrefs() {
   const now = new Date();
   el.username.value = localStorage.getItem("ca_username") || "";
   el.year.value = localStorage.getItem("ca_year") || String(now.getFullYear());
   el.month.value = localStorage.getItem("ca_month") || String(now.getMonth() + 1);
   el.depth.value = localStorage.getItem("ca_depth") || "15";
+  state.showBest = localStorage.getItem("ca_show_best") !== "0";
+  el.showBest.checked = state.showBest;
 }
 
 function savePrefs() {
@@ -46,6 +80,7 @@ function savePrefs() {
   localStorage.setItem("ca_year", el.year.value);
   localStorage.setItem("ca_month", el.month.value);
   localStorage.setItem("ca_depth", el.depth.value);
+  localStorage.setItem("ca_show_best", state.showBest ? "1" : "0");
 }
 
 function formatEval(ev) {
@@ -87,29 +122,36 @@ function renderBoard(fen) {
   }
 }
 
+function moveCellHtml(move, ply) {
+  if (!move) return "";
+  const mark = state.ply === ply ? "current-move" : "";
+  let text = move.san;
+  if (move.judgment && move.judgment !== "good") text += ` (${move.judgment})`;
+  return `<span class="${mark}" data-ply="${ply}">${text}</span>`;
+}
+
 function renderMoves() {
   if (!state.analysis) return;
+  const headers = state.analysis.headers || {};
+  el.whiteHeader.textContent = `White · ${headers.White || "?"}`;
+  el.blackHeader.textContent = `Black · ${headers.Black || "?"}`;
+
   const moves = state.analysis.moves;
-  const lines = [];
+  const rows = [];
   for (let i = 0; i < moves.length; i += 2) {
     const num = Math.floor(i / 2) + 1;
     const w = moves[i];
     const b = moves[i + 1];
-    const wMark = state.ply === i + 1 ? "current-move" : "";
-    const bMark = state.ply === i + 2 ? "current-move" : "";
-    let line = `${num}. `;
-    line += `<span class="${wMark}" data-ply="${i + 1}">${w.san}`;
-    if (w.judgment && w.judgment !== "good") line += ` (${w.judgment})`;
-    line += `</span>`;
-    if (b) {
-      line += ` <span class="${bMark}" data-ply="${i + 2}">${b.san}`;
-      if (b.judgment && b.judgment !== "good") line += ` (${b.judgment})`;
-      line += `</span>`;
-    }
-    lines.push(line);
+    rows.push(
+      `<tr>
+        <td>${num}</td>
+        <td data-ply="${i + 1}">${moveCellHtml(w, i + 1)}</td>
+        <td${b ? ` data-ply="${i + 2}"` : ""}>${moveCellHtml(b, i + 2)}</td>
+      </tr>`
+    );
   }
-  el.movesList.innerHTML = lines.join("\n");
-  el.movesList.querySelectorAll("[data-ply]").forEach((node) => {
+  el.movesBody.innerHTML = rows.join("");
+  el.movesBody.querySelectorAll("[data-ply]").forEach((node) => {
     node.addEventListener("click", () => {
       state.ply = Number(node.dataset.ply);
       renderPosition();
@@ -125,15 +167,30 @@ function renderPosition() {
   const lines = [
     `Ply: ${state.ply}/${state.analysis.moves.length}`,
     `Eval: ${formatEval(pos.eval)} (white POV)`,
-    `Best: ${pos.best_move || "-"}`,
-    `PV: ${(pos.pv || []).join(" ") || "-"}`,
   ];
+  if (state.showBest) {
+    lines.push(`Best: ${pos.best_move || "-"}`);
+    lines.push(`PV: ${(pos.pv || []).join(" ") || "-"}`);
+  }
   if (move) {
     lines.push(`Played: ${move.san} (${move.uci})`);
     lines.push(`Judgment: ${move.judgment || "-"}`);
     if (move.cp_loss != null) lines.push(`CP loss: ${move.cp_loss.toFixed(0)}`);
   }
-  el.evalInfo.textContent = lines.join("\n");
+  el.evalInfo.textContent = "";
+  lines.forEach((line, idx) => {
+    if (idx > 0) el.evalInfo.appendChild(document.createTextNode("\n"));
+    if (line.startsWith("PV:")) {
+      const label = document.createElement("span");
+      label.className = "pv-label";
+      label.title = PV_TOOLTIP;
+      label.textContent = "PV";
+      el.evalInfo.appendChild(label);
+      el.evalInfo.appendChild(document.createTextNode(line.slice(2)));
+    } else {
+      el.evalInfo.appendChild(document.createTextNode(line));
+    }
+  });
   renderMoves();
 }
 
@@ -146,7 +203,7 @@ function renderGames() {
   state.games.forEach((game, index) => {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "game-item" + (index === state.selectedIndex ? " active" : "");
+    btn.className = "game-item";
     const when = game.end_time ? new Date(game.end_time * 1000).toISOString().slice(0, 10) : "?";
     btn.textContent = [
       when,
@@ -177,7 +234,6 @@ async function loadGames() {
     state.games = data.games || [];
     state.selectedIndex = -1;
     state.analysis = null;
-    el.panel.hidden = true;
     renderGames();
     setStatus(`Loaded ${state.games.length} games.`);
   } catch (err) {
@@ -194,11 +250,13 @@ async function analyzeSelected(index) {
     return;
   }
   state.selectedIndex = index;
-  renderGames();
   const depth = Number(el.depth.value) || 15;
-  setStatus(`Analyzing with Stockfish (depth ${depth})… this may take a minute.`);
-  el.panel.hidden = false;
-  el.meta.textContent = `${game.white} vs ${game.black} · ${game.time_class} · analyzing…`;
+  showAnalysisView();
+  el.meta.textContent = `${game.white} vs ${game.black} · ${game.time_class}`;
+  el.movesBody.innerHTML = "";
+  el.evalInfo.textContent = "";
+  el.board.innerHTML = "";
+  setAnalysisStatus(`Analyzing with Stockfish (depth ${depth})… this may take a minute.`);
   try {
     const res = await fetch("/api/analyze", {
       method: "POST",
@@ -217,13 +275,25 @@ async function analyzeSelected(index) {
       h.Date || "",
     ].filter(Boolean).join(" · ");
     renderPosition();
-    setStatus("Analysis ready.");
+    setAnalysisStatus("Analysis ready.");
   } catch (err) {
-    setStatus(String(err.message || err));
+    setAnalysisStatus(String(err.message || err));
   }
 }
 
+function isTypingTarget(target) {
+  if (!target) return false;
+  const tag = target.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
+}
+
 el.loadGames.addEventListener("click", loadGames);
+el.back.addEventListener("click", goBack);
+el.showBest.addEventListener("change", () => {
+  state.showBest = el.showBest.checked;
+  savePrefs();
+  renderPosition();
+});
 el.prev.addEventListener("click", () => {
   if (!state.analysis) return;
   state.ply = Math.max(0, state.ply - 1);
@@ -246,7 +316,12 @@ el.end.addEventListener("click", () => {
 });
 
 document.addEventListener("keydown", (e) => {
-  if (!state.analysis) return;
+  if (state.view === "analysis" && e.key === "Backspace" && !isTypingTarget(e.target)) {
+    e.preventDefault();
+    goBack();
+    return;
+  }
+  if (state.view !== "analysis" || !state.analysis || isTypingTarget(e.target)) return;
   if (e.key === "ArrowLeft") {
     state.ply = Math.max(0, state.ply - 1);
     renderPosition();
@@ -257,6 +332,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 loadPrefs();
+showLoaderView();
 
 fetch("/api/health")
   .then((r) => r.json())

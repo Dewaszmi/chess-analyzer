@@ -9,7 +9,8 @@
 <body>
   <h1>Chess Analyzer</h1>
 
-  <section>
+  <section id="loader-view">
+    <h2>Game loader</h2>
     <label>
       Chess.com username
       <input id="username" type="text" autocomplete="username" />
@@ -28,16 +29,16 @@
     </label>
     <button id="load-games" type="button">Load games</button>
     <span id="status"></span>
-  </section>
 
-  <section>
     <h2>Games</h2>
     <div id="games"></div>
   </section>
 
-  <section id="analysis-panel" hidden>
+  <section id="analysis-view" hidden>
+    <button id="back" type="button">Back</button>
     <h2>Analysis</h2>
     <div id="game-meta"></div>
+    <span id="analysis-status"></span>
     <div class="row">
       <div>
         <div id="board"></div>
@@ -47,10 +48,23 @@
           <button id="start" type="button">Start</button>
           <button id="end" type="button">End</button>
         </div>
+        <label>
+          <input id="show-best" type="checkbox" checked />
+          Show best move
+        </label>
+        <pre id="eval-info"></pre>
       </div>
       <div>
-        <pre id="eval-info"></pre>
-        <pre id="moves-list"></pre>
+        <table id="moves-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th id="white-header">White</th>
+              <th id="black-header">Black</th>
+            </tr>
+          </thead>
+          <tbody id="moves-body"></tbody>
+        </table>
       </div>
     </div>
   </section>
